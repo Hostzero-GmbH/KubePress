@@ -155,7 +155,7 @@ helm upgrade --install kubepress dist/chart/ --namespace kubepress-controller -f
 
 To delete the Helm release, you can use the following command:
 ```bash
-helm uninstall kubepress
+helm uninstall kubepress --namespace kubepress-controller
 ```
 
 
