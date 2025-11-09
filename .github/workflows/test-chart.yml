@@ -2,7 +2,9 @@ name: Test Chart
 
 on:
   push:
-  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   test-e2e:
