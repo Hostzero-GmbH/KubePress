@@ -26,11 +26,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: lowercase REPO
+        run: |
+          echo "REPO=${GITHUB_REPOSITORY@L}" >>${GITHUB_ENV}
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ github.repository }}/controller:latest
+          tags: ghcr.io/${{ env.REPO }}/controller:latest
 
