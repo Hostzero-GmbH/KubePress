@@ -1,0 +1,15 @@
+apiVersion: v1
+entries:
+  kubepress:
+  - apiVersion: v2
+    appVersion: 0.2.55
+    created: "2025-11-09T18:36:17.501581771Z"
+    description: A Helm chart to distribute the project kubepress
+    digest: 7ec87162654867d2197adc7b8d77ce9f777dda6a9260bec992369f19bfd2356b
+    icon: https://hostzero.com/img/favicon.png
+    name: kubepress
+    type: application
+    urls:
+    - https://github.com/Hostzero-GmbH/KubePress/releases/download/kubepress-0.2.55/kubepress-0.2.55.tgz
+    version: 0.2.55
+generated: "2025-11-09T18:36:17.501593784Z"
