@@ -3,7 +3,7 @@ controllerManager:
   replicas: 1
   container:
     image:
-      repository: registry.threerabbits.io/fpbrandmueller/kubepress
+      repository: ghcr.io/hostzero-gmbh/kubepress/controller
     args:
       - "--leader-elect"
       - "--metrics-bind-address=:8443"
