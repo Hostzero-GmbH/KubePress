@@ -1,0 +1,28 @@
+{{- if .Values.rbac.enable }}
+# permissions for end users to edit wordpresses.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  name: wordpress-editor-role
+rules:
+- apiGroups:
+  - crm.hostzero.de
+  resources:
+  - wordpresses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - crm.hostzero.de
+  resources:
+  - wordpresses/status
+  verbs:
+  - get
+{{- end -}}
