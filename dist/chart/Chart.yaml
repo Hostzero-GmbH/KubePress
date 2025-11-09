@@ -1,0 +1,7 @@
+apiVersion: v2
+name: kubepress
+description: A Helm chart to distribute the project kubepress
+type: application
+version: 0.2.54
+appVersion: "0.2.54"
+icon: "https://hostzero.com/img/favicon.png"
