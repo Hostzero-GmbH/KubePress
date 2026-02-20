@@ -204,7 +204,7 @@ To generate the Helm chart, you can use the following command:
 # Enable or Update the helm chart via the helm plugin to an existing project
 # Before run the edit command, run `make manifests` to generate the manifest under `config/`
 make manifests
-kubebuilder edit --plugins=helm/v1-alpha
+kubebuilder edit --plugins=helm/v2-alpha
 ```
 
 This is documented in the [Kubebuilder documentation](https://book.kubebuilder.io/plugins/available/helm-v1-alpha).

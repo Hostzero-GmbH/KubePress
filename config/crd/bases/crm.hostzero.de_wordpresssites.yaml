@@ -77,12 +77,14 @@ spec:
                 properties:
                   createNew:
                     default: true
-                    description: Whether to create a new database or use existing
-                      one
+                    description: |-
+                      Whether to create a new database or use existing one
+                      If true, a new MySQL database will be created
+                      If false, connection details need to be provided via the referenced secret
                     type: boolean
                 type: object
               ingress:
-                description: Optional Ingress configuration
+                description: Ingress configuration
                 properties:
                   host:
                     description: Hostname for the WordPress site

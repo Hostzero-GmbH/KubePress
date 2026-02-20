@@ -2,6 +2,14 @@ apiVersion: v2
 name: kubepress
 description: A Helm chart to distribute the project kubepress
 type: application
+
 version: 0.2.55
 appVersion: "0.2.55"
 icon: "https://hostzero.com/img/favicon.png"
+
+keywords:
+  - kubernetes
+  - operator
+
+annotations:
+  kubebuilder.io/generated-by: kubebuilder

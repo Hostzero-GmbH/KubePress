@@ -1,83 +1,99 @@
-# [MANAGER]: Manager Deployment Configurations
-controllerManager:
+## String to partially override chart.fullname template (will maintain the release name)
+##
+# nameOverride: ""
+
+## String to fully override chart.fullname template
+##
+# fullnameOverride: ""
+
+## Configure the controller manager deployment
+##
+manager:
   replicas: 1
-  container:
-    image:
-      repository: ghcr.io/hostzero-gmbh/kubepress/controller
-    args:
-      - "--leader-elect"
-      - "--metrics-bind-address=:8443"
-      - "--health-probe-bind-address=:8081"
-    env:
-      ENVIRONMENT: production # does nothing at the moment, but may be used in the future, set it to "production" to be safe
-      TLS_CLUSTER_ISSUER: selfsigned-cluster-issuer # the name of the ClusterIssuer to be used for TLS certificates, must be created beforehand, this will be used for all ingresses created by Kubepress
-      MARIADB_REPLICAS: "3" # Kubepress automatically creates a MariaDB Cluster, this variable defines how many replicas should be created
-      STORAGE_CLASS_NAME: csi-cephfs-sc # the StorageClass to be used for PersistentVolumeClaims created by Kubepress, must be created beforehand, on those PVCs live the data of WordPress
-      CILIUM_SHARING_KEY: "kubepress" # the sharing key to be used for Cilium's Shared IP feature, this will apply to all ingresses for the SFTP service
-      CILIUM_REQUESTED_IPS: "10.101.254.110" # the IP address (or addresses) to be used for Cilium's Shared IP feature, this will apply to all service for the SFTP service, make sure that this IP is not in use
-      PHPMYADMIN_DOMAIN: "phpmyadmin.hostzero.com" # the domain to be used for the phpMyAdmin instance, make sure that this domain points to your cluster
-    resources:
-      limits:
+  
+  image:
+    repository: controller
+    tag: 0.1.14
+    pullPolicy: IfNotPresent
+
+  ## Arguments
+  ##
+  args: []
+
+  ## Environment variables
+  ##
+  env: []
+
+  ## Image pull secrets
+  ##
+  imagePullSecrets: []
+
+  ## Pod-level security settings
+  ##
+  podSecurityContext:
+    runAsNonRoot: true
+
+  ## Container-level security settings
+  ##
+  securityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+        drop:
+            - ALL
+
+  ## Resource limits and requests
+  ##
+  resources:
+    limits:
         cpu: 500m
         memory: 128Mi
-      requests:
+    requests:
         cpu: 10m
         memory: 64Mi
-    livenessProbe:
-      initialDelaySeconds: 15
-      periodSeconds: 20
-      httpGet:
-        path: /healthz
-        port: 8081
-    readinessProbe:
-      initialDelaySeconds: 5
-      periodSeconds: 10
-      httpGet:
-        path: /readyz
-        port: 8081
-    securityContext:
-      allowPrivilegeEscalation: false
-      capabilities:
-        drop:
-          - "ALL"
-  securityContext:
-    runAsNonRoot: true
-    seccompProfile:
-      type: RuntimeDefault
-  terminationGracePeriodSeconds: 10
-  serviceAccountName: kubepress-controller-manager
 
-# [RBAC]: To enable RBAC (Permissions) configurations
-rbac:
-  enable: true
+  ## Manager pod's affinity
+  ##
+  affinity: {}
 
-# [CRDs]: To enable the CRDs
-crd:
-  # This option determines whether the CRDs are included
-  # in the installation process.
-  enable: true
+  ## Manager pod's node selector
+  ##
+  nodeSelector: {}
 
-  # Enabling this option adds the "helm.sh/resource-policy": keep
-  # annotation to the CRD, ensuring it remains installed even when
-  # the Helm release is uninstalled.
-  # NOTE: Removing the CRDs will also remove all cert-manager CR(s)
-  # (Certificates, Issuers, ...) due to garbage collection.
-  keep: true
+  ## Manager pod's tolerations
+  ##
+  tolerations: []
 
-# [METRICS]: Set to true to generate manifests for exporting metrics.
-# To disable metrics export set false, and ensure that the
-# ControllerManager argument "--metrics-bind-address=:8443" is removed.
-metrics:
+## Helper RBAC roles for managing custom resources
+##
+rbacHelpers:
+  # Install convenience admin/editor/viewer roles for CRDs
   enable: false
 
-# [PROMETHEUS]: To enable a ServiceMonitor to export metrics to Prometheus set true
+## Custom Resource Definitions
+##
+crd:
+  # Install CRDs with the chart
+  enable: true
+  # Keep CRDs when uninstalling
+  keep: true
+
+## Controller metrics endpoint.
+## Enable to expose /metrics endpoint with RBAC protection.
+##
+metrics:
+  enable: true
+  # Metrics server port
+  port: 8443
+
+## Cert-manager integration for TLS certificates.
+## Required for webhook certificates and metrics endpoint certificates.
+##
+certManager:
+  enable: false
+
+## Prometheus ServiceMonitor for metrics scraping.
+## Requires prometheus-operator to be installed in the cluster.
+##
 prometheus:
   enable: false
 
-# [CERT-MANAGER]: To enable cert-manager injection to webhooks set true
-certmanager:
-  enable: false
-
-# [NETWORK POLICIES]: To enable NetworkPolicies set true
-networkPolicy:
-  enable: false
