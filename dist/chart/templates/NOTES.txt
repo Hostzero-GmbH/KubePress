@@ -1,6 +1,6 @@
 🚀 KubePress has been deployed successfully!
 
-{{- if eq .Values.controllerManager.container.env.ENVIRONMENT "development"  }}
+{{- if eq .Values.manager.env.ENVIRONMENT "development"  }}
 ⚠️  DEVELOPMENT MODE DETECTED!
    This deployment is configured for local development and testing.
    DO NOT use this configuration in production environments!
@@ -12,19 +12,19 @@
 │ Release Name: {{ .Release.Name }}                            
 │ Chart Version: {{ .Chart.Version }}
 │ Namespace: {{ .Release.Namespace }}
-│ Environment: {{ .Values.controllerManager.container.env.ENVIRONMENT }}
-│ Cilium Shared Key: {{ .Values.controllerManager.container.env.CILIUM_SHARING_KEY }}
-│ Cilium Requested IPs: {{ .Values.controllerManager.container.env.CILIUM_REQUESTED_IPS }}
+│ Environment: {{ .Values.manager.env.ENVIRONMENT }}
+│ Cilium Shared Key: {{ .Values.manager.env.CILIUM_SHARING_KEY }}
+│ Cilium Requested IPs: {{ .Values.manager.env.CILIUM_REQUESTED_IPS }}
 └─────────────────────────────────────────────────────────────┘
 
 📊 Storage Configuration:
-{{- if .Values.controllerManager.container.env.STORAGE_CLASS_NAME }}
+{{- if .Values.manager.env.STORAGE_CLASS_NAME }}
 ✅ Persistent storage is ENABLED
-   - Storage Class: {{ .Values.controllerManager.container.env.STORAGE_CLASS_NAME }}
+   - Storage Class: {{ .Values.manager.env.STORAGE_CLASS_NAME }}
 {{- else }}
 ❌ Persistent storage is DISABLED
 {{- end }}
 
 📝 Quick Commands:
    kubectl get pvc -n {{ .Release.Namespace}}
-   kubectl get storageclass {{ .Values.controllerManager.container.env.STORAGE_CLASS_NAME }}
+   kubectl get storageclass {{ .Values.manager.env.STORAGE_CLASS_NAME }}

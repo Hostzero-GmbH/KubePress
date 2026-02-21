@@ -12,17 +12,27 @@ manager:
   replicas: 1
   
   image:
-    repository: controller
-    tag: 0.1.14
+    repository: ghcr.io/hostzero-gmbh/kubepress/controller
     pullPolicy: IfNotPresent
 
   ## Arguments
   ##
-  args: []
+  args:
+    - "--leader-elect"
+    - "--metrics-bind-address=:8443"
+    - "--health-probe-bind-address=:8081"
 
   ## Environment variables
   ##
-  env: []
+  env:
+    ENVIRONMENT: production # does nothing at the moment, but may be used in the future, set it to "production" to be safe
+    TLS_CLUSTER_ISSUER: selfsigned-cluster-issuer # the name of the ClusterIssuer to be used for TLS certificates, must be created beforehand, this will be used for all ingresses created by Kubepress
+    MARIADB_REPLICAS: "3" # Kubepress automatically creates a MariaDB Cluster, this variable defines how many replicas should be created
+    STORAGE_CLASS_NAME: csi-cephfs-sc # the StorageClass to be used for PersistentVolumeClaims created by Kubepress, must be created beforehand, on those PVCs live the data of WordPress
+    CILIUM_SHARING_KEY: "kubepress" # the sharing key to be used for Cilium's Shared IP feature, this will apply to all ingresses for the SFTP service
+    CILIUM_REQUESTED_IPS: "10.101.254.110" # the IP address (or addresses) to be used for Cilium's Shared IP feature, this will apply to all service for the SFTP service, make sure that this IP is not in use
+    PHPMYADMIN_DOMAIN: "phpmyadmin.hostzero.com" # the domain to be used for the phpMyAdmin instance, make sure that this domain points to your cluster
+
 
   ## Image pull secrets
   ##
