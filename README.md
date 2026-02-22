@@ -124,7 +124,7 @@ helm repo add kubepress https://kubepress.org
 
 **Before installing the operator make sure that all the config values are correct.**
 
-Especially make sure that all the values under the key `controllerManager.env` in `dist/chart/values.yaml` are set correctly. What these values do is explained in the comments in the `values.yaml` file.
+Especially make sure that all the values under the key `manager.env` in `dist/chart/values.yaml` are set correctly. What these values do is explained in the comments in the `values.yaml` file.
 
 To install the KubePress Helm chart, you can use the following command:
 ```bash
