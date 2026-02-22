@@ -3,8 +3,8 @@ name: kubepress
 description: A Helm chart to distribute the project kubepress
 type: application
 
-version: 0.2.6
-appVersion: "0.2.6"
+version: 0.3.0-alpha
+appVersion: "0.3.0-alpha"
 icon: "https://hostzero.com/img/favicon.png"
 
 keywords:
