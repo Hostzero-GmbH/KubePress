@@ -13,6 +13,8 @@ spec:
     replicas: 1
     selector:
         matchLabels:
+            app.kubernetes.io/name: {{ .Chart.Name }}
+            app.kubernetes.io/instance: {{ .Release.Name }}
             control-plane: controller-manager
     template:
         metadata:
@@ -20,6 +22,10 @@ spec:
                 kubectl.kubernetes.io/default-container: manager
             labels:
                 control-plane: controller-manager
+                app.kubernetes.io/name: {{ .Chart.Name }}
+                app.kubernetes.io/instance: {{ .Release.Name }}
+                app.kubernetes.io/managed-by: {{ .Release.Service }}
+                app.kubernetes.io/version: {{ .Chart.Version | replace "+" "_" }}
         spec:
             {{- with .Values.manager.tolerations }}
             tolerations: {{ toYaml . | nindent 16 }}
