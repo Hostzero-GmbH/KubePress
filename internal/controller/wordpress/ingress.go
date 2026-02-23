@@ -32,7 +32,18 @@ func ReconcileIngress(ctx context.Context, r client.Client, scheme *runtime.Sche
 	path := "/"
 	pathType := networkingv1.PathTypePrefix
 	ingressClassName := "nginx"
+
+	// Use user-provided ingress class if set
+	if wp.Spec.Ingress != nil && wp.Spec.Ingress.IngressClassName != "" {
+		ingressClassName = wp.Spec.Ingress.IngressClassName
+	}
+
 	secretName := GetTLSSecretName(wp.Name)
+
+	// Use user-provided TLS secret if set
+	if wp.Spec.Ingress != nil && wp.Spec.Ingress.TLSSecretName != "" {
+		secretName = wp.Spec.Ingress.TLSSecretName
+	}
 
 	// Check if ingress exists
 	ingress := &networkingv1.Ingress{}
@@ -62,22 +73,38 @@ func createIngress(ctx context.Context, r client.Client, scheme *runtime.Scheme,
 		"app.kubernetes.io/name": "wordpress-ingress",
 	})
 
+	// Merge user-provided labels
+	if wp.Spec.Ingress != nil && wp.Spec.Ingress.Labels != nil {
+		for k, v := range wp.Spec.Ingress.Labels {
+			labels[k] = v
+		}
+	}
+
 	maxUploadLimit := wp.Spec.WordPress.MaxUploadLimit
 	if maxUploadLimit == "" {
 		maxUploadLimit = "64M" // default value if not set
 	}
 
-	// Create ingress with basic settings
+	annotations := map[string]string{
+		"nginx.ingress.kubernetes.io/proxy-body-size":    maxUploadLimit,
+		"nginx.ingress.kubernetes.io/proxy-read-timeout": "100",
+		"nginx.ingress.kubernetes.io/proxy-send-timeout": "100",
+	}
+
+	// Merge user-provided annotations
+	if wp.Spec.Ingress != nil && wp.Spec.Ingress.Annotations != nil {
+		for k, v := range wp.Spec.Ingress.Annotations {
+			annotations[k] = v
+		}
+	}
+
+	// Create ingress with merged settings
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      ingressName,
-			Namespace: wp.Namespace,
-			Labels:    labels,
-			Annotations: map[string]string{
-				"nginx.ingress.kubernetes.io/proxy-body-size":    wp.Spec.WordPress.MaxUploadLimit,
-				"nginx.ingress.kubernetes.io/proxy-read-timeout": "100",
-				"nginx.ingress.kubernetes.io/proxy-send-timeout": "100",
-			},
+			Name:        ingressName,
+			Namespace:   wp.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
 		},
 		Spec: networkingv1.IngressSpec{
 			IngressClassName: &ingressClassName,
@@ -119,23 +146,43 @@ func updateExistingIngress(ctx context.Context, r client.Client, wp *crmv1.WordP
 	labels := GetWordpressLabels(wp, map[string]string{
 		"app.kubernetes.io/name": "wordpress-ingress",
 	})
+
+	// Merge user-provided labels
+	if wp.Spec.Ingress != nil && wp.Spec.Ingress.Labels != nil {
+		for k, v := range wp.Spec.Ingress.Labels {
+			labels[k] = v
+		}
+	}
+
 	if !mapsEqual(ingress.Labels, labels) {
 		ingress.Labels = labels
 		needsUpdate = true
 	}
 
-	// update max upload limit annotation if needed
+	// Update annotations if needed
 	maxUploadLimit := wp.Spec.WordPress.MaxUploadLimit
 	if maxUploadLimit == "" {
 		maxUploadLimit = "64M" // default value if not set
+	}
+
+	annotations := map[string]string{
+		"nginx.ingress.kubernetes.io/proxy-body-size":    maxUploadLimit,
+		"nginx.ingress.kubernetes.io/proxy-read-timeout": "100",
+		"nginx.ingress.kubernetes.io/proxy-send-timeout": "100",
+	}
+
+	if wp.Spec.Ingress != nil && wp.Spec.Ingress.Annotations != nil {
+		for k, v := range wp.Spec.Ingress.Annotations {
+			annotations[k] = v
+		}
 	}
 
 	if ingress.Annotations == nil {
 		ingress.Annotations = make(map[string]string)
 	}
 
-	if ingress.Annotations["nginx.ingress.kubernetes.io/proxy-body-size"] != maxUploadLimit {
-		ingress.Annotations["nginx.ingress.kubernetes.io/proxy-body-size"] = maxUploadLimit
+	if !mapsEqual(ingress.Annotations, annotations) {
+		ingress.Annotations = annotations
 		needsUpdate = true
 	}
 

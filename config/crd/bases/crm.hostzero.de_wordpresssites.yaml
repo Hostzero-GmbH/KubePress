@@ -86,14 +86,30 @@ spec:
               ingress:
                 description: Ingress configuration
                 properties:
+                  annotations:
+                    additionalProperties:
+                      type: string
+                    description: Annotations to add to the ingress
+                    type: object
                   host:
                     description: Hostname for the WordPress site
                     minLength: 1
                     type: string
+                  ingressClassName:
+                    description: IngressClassName override, immutable after creation
+                    type: string
+                  labels:
+                    additionalProperties:
+                      type: string
+                    description: Labels to add to the ingress
+                    type: object
                   tls:
                     default: false
                     description: Enable TLS/HTTPS
                     type: boolean
+                  tlsSecretName:
+                    description: TLS secret name override
+                    type: string
                 required:
                 - host
                 type: object

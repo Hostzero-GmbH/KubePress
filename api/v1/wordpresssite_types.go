@@ -109,6 +109,9 @@ type ResourceRequirements struct {
 }
 
 // IngressConfig defines ingress configuration for WordPress
+// +kubebuilder:object:generate=true
+// +kubebuilder:validation:Optional
+// +kubebuilder:validation:Type=object
 type IngressConfig struct {
 	// Hostname for the WordPress site
 	// +kubebuilder:validation:MinLength=1
@@ -119,6 +122,22 @@ type IngressConfig struct {
 	// +kubebuilder:default=false
 	// +optional
 	TLS bool `json:"tls,omitempty"`
+
+	// TLS secret name override
+	// +optional
+	TLSSecretName string `json:"tlsSecretName,omitempty"`
+
+	// Annotations to add to the ingress
+	// +optional
+	Annotations map[string]string `json:"annotations,omitempty"`
+
+	// Labels to add to the ingress
+	// +optional
+	Labels map[string]string `json:"labels,omitempty"`
+
+	// IngressClassName override, immutable after creation
+	// +optional
+	IngressClassName string `json:"ingressClassName,omitempty"`
 }
 
 // WordPressSiteStatus defines the observed state of WordPressSite
