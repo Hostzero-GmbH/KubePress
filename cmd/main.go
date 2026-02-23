@@ -5,6 +5,7 @@ import (
 	mariadbv1alpha1 "github.com/mariadb-operator/mariadb-operator/v25/api/v1alpha1"
 	"github.com/spf13/pflag"
 	crmv1 "hostzero.de/m/v2/api/v1"
+	"hostzero.de/m/v2/internal/config"
 	controller "hostzero.de/m/v2/internal/controller"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -71,11 +72,7 @@ func main() {
 		logger.Info("CILIUM_SHARING_KEY variable is not set. No Annotation on services will be set.")
 	}
 
-	PHPMyAdminDomain := os.Getenv("PHPMYADMIN_DOMAIN")
-	if PHPMyAdminDomain == "" {
-		logger.Info("PHPMYADMIN_DOMAIN variable is not set. This needs to be set to enable phpMyAdmin access.")
-		os.Exit(1)
-	}
+	config.Load()
 
 	// log app version
 	version := os.Getenv("VERSION")

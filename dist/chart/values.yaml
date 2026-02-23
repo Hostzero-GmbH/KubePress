@@ -31,6 +31,7 @@ manager:
     STORAGE_CLASS_NAME: csi-cephfs-sc # the StorageClass to be used for PersistentVolumeClaims created by Kubepress, must be created beforehand, on those PVCs live the data of WordPress
     CILIUM_SHARING_KEY: "kubepress" # the sharing key to be used for Cilium's Shared IP feature, this will apply to all ingresses for the SFTP service
     CILIUM_REQUESTED_IPS: "10.101.254.110" # the IP address (or addresses) to be used for Cilium's Shared IP feature, this will apply to all service for the SFTP service, make sure that this IP is not in use
+    PHPMYADMIN_ENABLED: "true" # whether to create a phpMyAdmin instance for each Namespace, existing instances won't be deleted if you set this to false, but no new instances will be created
     PHPMYADMIN_DOMAIN: "phpmyadmin.hostzero.com" # the domain to be used for the phpMyAdmin instance, make sure that this domain points to your cluster
 
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	crmv1 "hostzero.de/m/v2/api/v1"
+	"hostzero.de/m/v2/internal/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -18,6 +19,11 @@ import (
 
 func ReconcilePHPMyAdmin(ctx context.Context, r client.Client, wp *crmv1.WordPressSite) error {
 	logger := log.FromContext(ctx).WithValues("component", "phpmyadmin")
+
+	if !config.AppConfig.PhpMyAdminEnabled {
+		logger.Info("PHPMYADMIN_ENABLED is not set to true; skipping phpMyAdmin deployment.")
+		return nil
+	}
 
 	logger = logger.WithValues("component", "phpmyadmin", "site", wp.Name, "namespace", wp.Namespace)
 
@@ -112,7 +118,7 @@ func ReconcilePHPMyAdmin(ctx context.Context, r client.Client, wp *crmv1.WordPre
 
 		// --- Add Ingress definition ---
 		ingressName := "phpmyadmin"
-		host := os.Getenv("PHPMYADMIN_DOMAIN")
+		host := config.AppConfig.PhpMyAdminDomain
 		ingressLabels := map[string]string{
 			"app.kubernetes.io/managed-by": "kubepress-operator",
 			"app.kubernetes.io/part-of":    "kubepress",
