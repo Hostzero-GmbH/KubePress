@@ -51,6 +51,11 @@ func ReconcileIngress(ctx context.Context, r client.Client, scheme *runtime.Sche
 
 	if errors.IsNotFound(err) {
 		// Create new ingress
+		if wp.Spec.Ingress.Enabled == false {
+			logger.Info("Ingress is disabled, skipping creation")
+			return nil
+		}
+
 		return createIngress(ctx, r, scheme, wp, ingressName, host, serviceName, path, pathType,
 			ingressClassName, secretName, logger)
 	} else if err != nil {
@@ -59,6 +64,15 @@ func ReconcileIngress(ctx context.Context, r client.Client, scheme *runtime.Sche
 	}
 
 	// Ingress exists - update it if needed
+	if wp.Spec.Ingress.Enabled == false {
+		logger.Info("Ingress is disabled, deleting existing ingress if it exists")
+		if err := r.Delete(ctx, ingress); err != nil {
+			logger.Error(err, "Failed to delete Ingress")
+			return fmt.Errorf("failed to delete ingress: %w", err)
+		}
+		return nil
+	}
+
 	return updateExistingIngress(ctx, r, wp, ingress, host, serviceName, path, pathType,
 		secretName, logger)
 }

@@ -48,9 +48,16 @@ spec:
                     {{- range .Values.manager.args }}
                     - {{ . }}
                     {{- end }}
+                  env:
+                    {{- range $key, $value := .Values.manager.env }}
+                    - name: {{ $key }}
+                      value: {{ $value | quote }}
+                    {{- end }}
+                    - name: VERSION
+                      value: {{ .Chart.AppVersion }}
                   command:
                     - /manager
-                  image: "{{ .Values.manager.image.repository }}:{{ .Values.manager.image.tag }}"
+                  image: "{{ .Values.manager.image.repository }}:{{ .Chart.AppVersion }}"
                   imagePullPolicy: {{ .Values.manager.image.pullPolicy }}
                   livenessProbe:
                     httpGet:

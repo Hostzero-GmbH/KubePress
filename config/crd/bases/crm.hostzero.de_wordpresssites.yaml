@@ -91,6 +91,10 @@ spec:
                       type: string
                     description: Annotations to add to the ingress
                     type: object
+                  enabled:
+                    default: true
+                    description: Enable or disable ingress for the WordPress site
+                    type: boolean
                   host:
                     description: Hostname for the WordPress site
                     minLength: 1
@@ -111,6 +115,7 @@ spec:
                     description: TLS secret name override
                     type: string
                 required:
+                - enabled
                 - host
                 type: object
               siteTitle:

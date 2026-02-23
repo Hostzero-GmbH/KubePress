@@ -446,12 +446,18 @@ func (r *WordPressSiteReconciler) updateStatus(ctx context.Context, wp *crmv1.Wo
 
 	// Check if Ingress is ready
 	if status == StatusWordPressReady {
-		ingressReady, err := r.isIngressReady(ctx, wp)
-		if err != nil {
-			logger.Error(err, "Failed to check if Ingress is ready")
-		} else if ingressReady {
-			r.Recorder.Event(wp, v1.EventTypeNormal, "IngressReady", "Detected Ingress is ready for WordPress site")
+		if wp.Spec.Ingress.Enabled == false {
+			// If Ingress is not enabled, we can consider the site ready at this point
+			r.Recorder.Event(wp, v1.EventTypeNormal, "WordPressReady", "WordPress site is ready (Ingress not enabled)")
 			status = StatusWordPressReadyAndDeployed
+		} else {
+			ingressReady, err := r.isIngressReady(ctx, wp)
+			if err != nil {
+				logger.Error(err, "Failed to check if Ingress is ready")
+			} else if ingressReady {
+				r.Recorder.Event(wp, v1.EventTypeNormal, "IngressReady", "Detected Ingress is ready for WordPress site")
+				status = StatusWordPressReadyAndDeployed
+			}
 		}
 	}
 

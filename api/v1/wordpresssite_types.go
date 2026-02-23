@@ -113,6 +113,11 @@ type ResourceRequirements struct {
 // +kubebuilder:validation:Optional
 // +kubebuilder:validation:Type=object
 type IngressConfig struct {
+	// Enable or disable ingress for the WordPress site
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Required
+	Enabled bool `json:"enabled,omitempty"`
+
 	// Hostname for the WordPress site
 	// +kubebuilder:validation:MinLength=1
 	// +kubebuilder:validation:Required
