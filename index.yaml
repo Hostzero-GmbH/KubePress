@@ -4,6 +4,23 @@ entries:
   - annotations:
       kubebuilder.io/generated-by: kubebuilder
     apiVersion: v2
+    appVersion: 0.3.0-alpha.6
+    created: "2026-10-29T22:21:44.965937835Z"
+    description: A Helm chart to distribute the project kubepress
+    digest: de3fb9de11cac20f9abd0ff356920fc6241a1fb1af41268e5161fa6d9f13e74c
+    icon: https://hostzero.com/img/favicon.png
+    keywords:
+    - kubernetes
+    - operator
+    - wordpress
+    name: kubepress
+    type: application
+    urls:
+    - https://github.com/Hostzero-GmbH/KubePress/releases/download/kubepress-0.3.0-alpha.6/kubepress-0.3.0-alpha.6.tgz
+    version: 0.3.0-alpha.6
+  - annotations:
+      kubebuilder.io/generated-by: kubebuilder
+    apiVersion: v2
     appVersion: 0.3.0-alpha.5
     created: "2026-10-29T22:11:05.801012114Z"
     description: A Helm chart to distribute the project kubepress
@@ -80,4 +97,4 @@ entries:
     urls:
     - https://github.com/Hostzero-GmbH/KubePress/releases/download/kubepress-0.2.6/kubepress-0.2.6.tgz
     version: 0.2.6
-generated: "2026-10-29T22:11:05.801055329Z"
+generated: "2026-10-29T22:21:44.965966467Z"
