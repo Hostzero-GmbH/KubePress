@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.16.1
+    controller-gen.kubebuilder.io/version: v0.17.3
   name: wordpresssites.crm.hostzero.de
 spec:
   group: crm.hostzero.de
@@ -149,6 +149,13 @@ spec:
                     default: wordpress:latest
                     description: Image to use for the WordPress container
                     type: string
+                  keepWarm:
+                    default: true
+                    description: |-
+                      KeepWarm runs a sidecar that periodically requests the homepage so the
+                      site's caches (opcache, realpath, CephFS metadata, DB buffer pool) stay
+                      warm between visitors. Avoids slow first requests on low-traffic sites.
+                    type: boolean
                   maxUploadLimit:
                     default: 64M
                     description: MaxUploadLimit sets the maximum upload file size
