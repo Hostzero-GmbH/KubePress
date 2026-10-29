@@ -78,6 +78,13 @@ type WordPressConfig struct {
 	// Resource requirements for the WordPress pod
 	// +optional
 	Resources *ResourceRequirements `json:"resources,omitempty"`
+
+	// KeepWarm runs a sidecar that periodically requests the homepage so the
+	// site's caches (opcache, realpath, CephFS metadata, DB buffer pool) stay
+	// warm between visitors. Avoids slow first requests on low-traffic sites.
+	// +kubebuilder:default=true
+	// +optional
+	KeepWarm *bool `json:"keepWarm,omitempty"`
 }
 
 // EnvVar represents an environment variable in a container

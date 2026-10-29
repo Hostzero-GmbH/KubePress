@@ -15,10 +15,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
+	"slices"
 )
 
 const (
-	DefaultVolumeName = "wordpress-central-data"
+	DefaultVolumeName     = "wordpress-central-data"
+	KeepWarmContainerName = "keep-warm"
+	KeepWarmInterval      = 30 // seconds between warmup requests
 )
 
 // ReconcileDeployment creates or updates the Deployment for WordPress
@@ -279,6 +282,10 @@ chown -R 33:33 /var/www/html
 			Volumes: volumes,
 		}
 
+		if keepWarmEnabled(wp) {
+			podSpec.Containers = append(podSpec.Containers, keepWarmContainer(wp))
+		}
+
 		// Create the deployment
 		deployment = &appsv1.Deployment{
 			ObjectMeta: metav1.ObjectMeta{
@@ -383,6 +390,11 @@ chown -R 33:33 /var/www/html
 			updateNeeded = true
 		}
 
+		// Ensure the keep-warm sidecar matches the spec
+		if reconcileKeepWarmContainer(deployment, wp) {
+			updateNeeded = true
+		}
+
 		// Update the deployment if needed
 		if updateNeeded {
 			logger.Info("Updating WordPress deployment")
@@ -441,6 +453,84 @@ func updateEnvVars(deployment *appsv1.Deployment, envVars []crmv1.EnvVar, logger
 		}
 	}
 
+	return changed
+}
+
+// keepWarmEnabled returns whether the keep-warm sidecar is enabled (default true)
+func keepWarmEnabled(wp *crmv1.WordPressSite) bool {
+	return wp.Spec.WordPress.KeepWarm == nil || *wp.Spec.WordPress.KeepWarm
+}
+
+// keepWarmContainer builds a sidecar that requests the homepage every
+// KeepWarmInterval seconds. On low-traffic sites this keeps opcache timestamp
+// validation, PHP's realpath cache, the kernel's CephFS metadata caches and
+// the DB buffer pool warm, which otherwise make the first request after an
+// idle period several times slower. Failures are ignored on purpose: this is
+// a warmer, not a health check, and must never affect pod availability.
+func keepWarmContainer(wp *crmv1.WordPressSite) corev1.Container {
+	host := wp.Name
+	if wp.Spec.Ingress != nil && wp.Spec.Ingress.Host != "" {
+		host = wp.Spec.Ingress.Host
+	}
+	// X-Forwarded-Proto: https matches the header set by the ingress, so
+	// WordPress renders the page instead of answering with a canonical
+	// redirect to the https siteurl.
+	cmd := fmt.Sprintf(
+		`while true; do curl -s -o /dev/null -m 25 -H "Host: %s" -H "X-Forwarded-Proto: https" http://127.0.0.1/ || true; sleep %d; done`,
+		host, KeepWarmInterval,
+	)
+	return corev1.Container{
+		Name:    KeepWarmContainerName,
+		Image:   wp.Spec.WordPress.Image,
+		Command: []string{"sh", "-c", cmd},
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("5m"),
+				corev1.ResourceMemory: resource.MustParse("16Mi"),
+			},
+			Limits: corev1.ResourceList{
+				corev1.ResourceCPU:    resource.MustParse("50m"),
+				corev1.ResourceMemory: resource.MustParse("32Mi"),
+			},
+		},
+	}
+}
+
+// reconcileKeepWarmContainer adds, updates or removes the keep-warm sidecar
+// on an existing deployment. Returns true if the deployment was modified.
+func reconcileKeepWarmContainer(deployment *appsv1.Deployment, wp *crmv1.WordPressSite) bool {
+	containers := deployment.Spec.Template.Spec.Containers
+	idx := -1
+	for i, c := range containers {
+		if c.Name == KeepWarmContainerName {
+			idx = i
+			break
+		}
+	}
+
+	if !keepWarmEnabled(wp) {
+		if idx >= 0 {
+			deployment.Spec.Template.Spec.Containers = append(containers[:idx], containers[idx+1:]...)
+			return true
+		}
+		return false
+	}
+
+	desired := keepWarmContainer(wp)
+	if idx < 0 {
+		deployment.Spec.Template.Spec.Containers = append(containers, desired)
+		return true
+	}
+
+	changed := false
+	if containers[idx].Image != desired.Image {
+		containers[idx].Image = desired.Image
+		changed = true
+	}
+	if !slices.Equal(containers[idx].Command, desired.Command) {
+		containers[idx].Command = desired.Command
+		changed = true
+	}
 	return changed
 }
 
