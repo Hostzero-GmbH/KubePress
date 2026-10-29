@@ -64,6 +64,7 @@ func ReconcileDeployment(ctx context.Context, r client.Client, scheme *runtime.S
 				MountPath: "/usr/local/etc/php/conf.d/custom.ini",
 				SubPath:   "php.ini",
 			},
+			apacheConfigVolumeMount(),
 		}
 
 		// Configure volumes to use central PVC
@@ -395,6 +396,11 @@ chown -R 33:33 /var/www/html
 			updateNeeded = true
 		}
 
+		// Ensure the Apache prefork config is mounted
+		if reconcileApacheConfigMount(deployment) {
+			updateNeeded = true
+		}
+
 		// Update the deployment if needed
 		if updateNeeded {
 			logger.Info("Updating WordPress deployment")
@@ -532,6 +538,29 @@ func reconcileKeepWarmContainer(deployment *appsv1.Deployment, wp *crmv1.WordPre
 		changed = true
 	}
 	return changed
+}
+
+// apacheConfigVolumeMount mounts the generated prefork config from the
+// php-config ConfigMap into the WordPress container
+func apacheConfigVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      "php-config",
+		MountPath: ApacheConfigMountPath,
+		SubPath:   ApacheConfigKey,
+	}
+}
+
+// reconcileApacheConfigMount adds the prefork config mount to the WordPress
+// container of an existing deployment. Returns true if the deployment was modified.
+func reconcileApacheConfigMount(deployment *appsv1.Deployment) bool {
+	container := &deployment.Spec.Template.Spec.Containers[0]
+	for _, m := range container.VolumeMounts {
+		if m.MountPath == ApacheConfigMountPath {
+			return false
+		}
+	}
+	container.VolumeMounts = append(container.VolumeMounts, apacheConfigVolumeMount())
+	return true
 }
 
 // Helper functions to get values from the WordPress spec
