@@ -78,6 +78,17 @@ func ReconcileConfigMap(ctx context.Context, r client.Client, scheme *runtime.Sc
 		phpIniContent += fmt.Sprintf("%s = %s\n", k, phpConfig[k])
 	}
 
+	apacheConfig, err := ApachePreforkConfig(wp)
+	if err != nil {
+		logger.Error(err, "Failed to compute Apache prefork config")
+		return err
+	}
+
+	data := map[string]string{
+		"php.ini":       phpIniContent,
+		ApacheConfigKey: apacheConfig,
+	}
+
 	// Compare with existing config (if any)
 	existingConfigMap := &corev1.ConfigMap{}
 	configChanged := false
@@ -90,17 +101,16 @@ func ReconcileConfigMap(ctx context.Context, r client.Client, scheme *runtime.Sc
 	}
 
 	if err == nil {
-		existing, ok := existingConfigMap.Data["php.ini"]
-		if ok && existing != phpIniContent {
-			configChanged = true
+		for key, content := range data {
+			if existing, ok := existingConfigMap.Data[key]; ok && existing != content {
+				configChanged = true
+			}
 		}
 	}
 
 	// Create or update the ConfigMap
 	_, err = ctrl.CreateOrUpdate(ctx, r, configMap, func() error {
-		configMap.Data = map[string]string{
-			"php.ini": phpIniContent,
-		}
+		configMap.Data = data
 
 		return controllerutil.SetControllerReference(wp, configMap, scheme)
 	})
