@@ -106,11 +106,13 @@ type ResourceRequirements struct {
 	// +optional
 	MemoryLimit string `json:"memoryLimit,omitempty"`
 
-	// CPU request
+	// CPU request. Ignored: the operator derives the request from cpuLimit
+	// with its REQUEST_CPU_FRACTION setting
 	// +optional
 	CPURequest string `json:"cpuRequest,omitempty"`
 
-	// Memory request
+	// Memory request. Ignored: the operator derives the request from
+	// memoryLimit with its REQUEST_MEMORY_FRACTION setting
 	// +optional
 	MemoryRequest string `json:"memoryRequest,omitempty"`
 }

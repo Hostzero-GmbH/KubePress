@@ -180,13 +180,17 @@ spec:
                         description: CPU limit
                         type: string
                       cpuRequest:
-                        description: CPU request
+                        description: |-
+                          CPU request. Ignored: the operator derives the request from cpuLimit
+                          with its REQUEST_CPU_FRACTION setting
                         type: string
                       memoryLimit:
                         description: Memory limit
                         type: string
                       memoryRequest:
-                        description: Memory request
+                        description: |-
+                          Memory request. Ignored: the operator derives the request from
+                          memoryLimit with its REQUEST_MEMORY_FRACTION setting
                         type: string
                     type: object
                   storageSize:

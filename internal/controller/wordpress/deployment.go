@@ -96,6 +96,12 @@ func ReconcileDeployment(ctx context.Context, r client.Client, scheme *runtime.S
 			return err
 		}
 
+		resources, err := WordPressResources(wp)
+		if err != nil {
+			logger.Error(err, "Failed to compute WordPress container resources")
+			return err
+		}
+
 		// Add initContainer for WordPress
 		// Init Container is the best solution to ensure WordPress is properly installed
 		// PostStart hooks don't allow logging and are not suitable for complex initialization
@@ -268,16 +274,7 @@ chown -R 33:33 /var/www/html
 						},
 					},
 					VolumeMounts: volumeMounts,
-					Resources: corev1.ResourceRequirements{
-						Requests: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse(wp.Spec.WordPress.Resources.CPURequest),
-							corev1.ResourceMemory: resource.MustParse(wp.Spec.WordPress.Resources.MemoryRequest),
-						},
-						Limits: corev1.ResourceList{
-							corev1.ResourceCPU:    resource.MustParse(wp.Spec.WordPress.Resources.CPULimit),
-							corev1.ResourceMemory: resource.MustParse(wp.Spec.WordPress.Resources.MemoryLimit),
-						},
-					},
+					Resources:    resources,
 				},
 			},
 			Volumes: volumes,
@@ -346,15 +343,10 @@ chown -R 33:33 /var/www/html
 		}
 
 		// Check if resource requests/limits need to be updated
-		resources := corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse(wp.Spec.WordPress.Resources.CPURequest),
-				corev1.ResourceMemory: resource.MustParse(wp.Spec.WordPress.Resources.MemoryRequest),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    resource.MustParse(wp.Spec.WordPress.Resources.CPULimit),
-				corev1.ResourceMemory: resource.MustParse(wp.Spec.WordPress.Resources.MemoryLimit),
-			},
+		resources, err := WordPressResources(wp)
+		if err != nil {
+			logger.Error(err, "Failed to compute WordPress container resources")
+			return err
 		}
 
 		if !resourcesEqual(deployment.Spec.Template.Spec.Containers[0].Resources, resources) {

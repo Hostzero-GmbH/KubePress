@@ -33,6 +33,8 @@ manager:
     CILIUM_REQUESTED_IPS: "10.101.254.110" # the IP address (or addresses) to be used for Cilium's Shared IP feature, this will apply to all service for the SFTP service, make sure that this IP is not in use
     PHPMYADMIN_ENABLED: "true" # whether to create a phpMyAdmin instance for each Namespace, existing instances won't be deleted if you set this to false, but no new instances will be created
     PHPMYADMIN_DOMAIN: "phpmyadmin.hostzero.com" # the domain to be used for the phpMyAdmin instance, make sure that this domain points to your cluster
+    REQUEST_CPU_FRACTION: "0.25" # WordPress containers request this fraction of their CPU limit, so nodes can overcommit on requests while every site keeps its full limit
+    REQUEST_MEMORY_FRACTION: "0.5" # same for memory
 
 
   ## Image pull secrets
