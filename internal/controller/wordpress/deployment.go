@@ -24,6 +24,75 @@ const (
 	KeepWarmInterval      = 30 // seconds between warmup requests
 )
 
+// initContainerScript prepares the WordPress installation on every pod start
+const initContainerScript = `#!/bin/bash
+set -e
+
+# Ensure we're running as www-data user
+#[ "$(id -u)" != "33" ] && { echo "ERROR: Must run as www-data user (uid 33)"; exit 1; }
+
+# Check volume accessibility
+#[ ! -d "/var/www/html" ] && { echo "ERROR: /var/www/html directory does not exist"; exit 1; }
+#touch /var/www/html/.test-write 2>/dev/null || { echo "ERROR: Cannot write to /var/www/html"; exit 1; }
+#rm -f /var/www/html/.test-write
+
+# Ensure wp-cli is installed
+if [ ! -f /tmp/wp-cli ]; then
+	curl -s -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar >/dev/null 2>&1
+	chmod +x wp-cli.phar >/dev/null 2>&1
+	mv wp-cli.phar /tmp/wp-cli
+fi
+
+if [ ! -f /var/www/html/index.php ]; then
+	echo "Downloading WordPress core files..."
+	/tmp/wp-cli core download --path="/var/www/html/" --locale=en_US --allow-root
+fi
+
+# Create wp-config.php if it doesn't exist
+if [ ! -f /var/www/html/wp-config.php ]; then
+	echo "Creating wp-config.php..."
+	/tmp/wp-cli config create --path="/var/www/html/" \
+		--dbhost="$WORDPRESS_DB_HOST" \
+		--dbname="$WORDPRESS_DB_NAME" \
+		--dbuser="$WORDPRESS_DB_USER" \
+		--dbpass="$WORDPRESS_DB_PASSWORD" \
+    	--allow-root \
+		--extra-php <<PHP
+define('FS_METHOD', 'direct');
+define('WP_MEMORY_LIMIT', '256M');
+PHP
+
+	# add TLS workaround if behind a proxy
+	sed -i '2 i define('\''FORCE_SSL_ADMIN'\'', true); if ($_SERVER["HTTP_X_FORWARDED_PROTO"] == "https") $_SERVER["HTTPS"]="on";' /var/www/html/wp-config.php
+fi
+
+# Set the WP Memory Limit correctly
+/tmp/wp-cli config set WP_MEMORY_LIMIT "$WORDPRESS_MEMORY_LIMIT" --path="/var/www/html/" --allow-root
+
+# Install WordPress if not already installed
+if ! /tmp/wp-cli core is-installed --path="/var/www/html/" --quiet 2>/dev/null; then
+	/tmp/wp-cli core install \
+		--path="/var/www/html/" \
+		--url="$WORDPRESS_URL" \
+		--title="$WORDPRESS_TITLE" \
+		--admin_user="$WORDPRESS_ADMIN_USER" \
+		--admin_password="$WORDPRESS_ADMIN_PASSWORD" \
+		--admin_email="$WORDPRESS_ADMIN_EMAIL" \
+		--skip-email \
+		--allow-root
+fi
+
+` + ssoInitScript + `
+# Set proper ownership and permissions
+chown -R 33:33 /var/www/html
+`
+
+// initContainerCommand is the init container entrypoint; kept in one place so
+// existing deployments can be updated when the script changes
+func initContainerCommand() []string {
+	return []string{"sh", "-c", initContainerScript}
+}
+
 // ReconcileDeployment creates or updates the Deployment for WordPress
 func ReconcileDeployment(ctx context.Context, r client.Client, scheme *runtime.Scheme, wp *crmv1.WordPressSite) error {
 	logger := log.FromContext(ctx).WithValues("component", "ingress")
@@ -120,67 +189,8 @@ func ReconcileDeployment(ctx context.Context, r client.Client, scheme *runtime.S
 			//		Add:  []corev1.Capability{"CHOWN", "SETUID", "SETGID"}, // Minimal capabilities
 			//	},
 			//},
-			Command: []string{"sh", "-c", `#!/bin/bash
-set -e
-
-# Ensure we're running as www-data user
-#[ "$(id -u)" != "33" ] && { echo "ERROR: Must run as www-data user (uid 33)"; exit 1; }
-
-# Check volume accessibility
-#[ ! -d "/var/www/html" ] && { echo "ERROR: /var/www/html directory does not exist"; exit 1; }
-#touch /var/www/html/.test-write 2>/dev/null || { echo "ERROR: Cannot write to /var/www/html"; exit 1; }
-#rm -f /var/www/html/.test-write
-
-# Ensure wp-cli is installed
-if [ ! -f /tmp/wp-cli ]; then
-	curl -s -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar >/dev/null 2>&1
-	chmod +x wp-cli.phar >/dev/null 2>&1
-	mv wp-cli.phar /tmp/wp-cli
-fi
-
-if [ ! -f /var/www/html/index.php ]; then
-	echo "Downloading WordPress core files..."
-	/tmp/wp-cli core download --path="/var/www/html/" --locale=en_US --allow-root
-fi
-
-# Create wp-config.php if it doesn't exist
-if [ ! -f /var/www/html/wp-config.php ]; then
-	echo "Creating wp-config.php..."
-	/tmp/wp-cli config create --path="/var/www/html/" \
-		--dbhost="$WORDPRESS_DB_HOST" \
-		--dbname="$WORDPRESS_DB_NAME" \
-		--dbuser="$WORDPRESS_DB_USER" \
-		--dbpass="$WORDPRESS_DB_PASSWORD" \
-    	--allow-root \
-		--extra-php <<PHP
-define('FS_METHOD', 'direct');
-define('WP_MEMORY_LIMIT', '256M');
-PHP
-
-	# add TLS workaround if behind a proxy
-	sed -i '2 i define('\''FORCE_SSL_ADMIN'\'', true); if ($_SERVER["HTTP_X_FORWARDED_PROTO"] == "https") $_SERVER["HTTPS"]="on";' /var/www/html/wp-config.php
-fi
-
-# Set the WP Memory Limit correctly
-/tmp/wp-cli config set WP_MEMORY_LIMIT "$WORDPRESS_MEMORY_LIMIT" --path="/var/www/html/" --allow-root
-
-# Install WordPress if not already installed
-if ! /tmp/wp-cli core is-installed --path="/var/www/html/" --quiet 2>/dev/null; then
-	/tmp/wp-cli core install \
-		--path="/var/www/html/" \
-		--url="$WORDPRESS_URL" \
-		--title="$WORDPRESS_TITLE" \
-		--admin_user="$WORDPRESS_ADMIN_USER" \
-		--admin_password="$WORDPRESS_ADMIN_PASSWORD" \
-		--admin_email="$WORDPRESS_ADMIN_EMAIL" \
-		--skip-email \
-		--allow-root
-fi
-
-# Set proper ownership and permissions
-chown -R 33:33 /var/www/html
-`},
-			VolumeMounts: volumeMounts, // share volumes with main container if needed
+			Command:      initContainerCommand(),
+			VolumeMounts: append(slices.Clone(volumeMounts), ssoPluginVolumeMount()), // share volumes with main container if needed
 			Env: []corev1.EnvVar{
 				{Name: "WORDPRESS_DB_HOST", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: mySQLSecretName}, Key: "databaseHost"}}},
 				{Name: "WORDPRESS_DB_NAME", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: mySQLSecretName}, Key: "database"}}},
@@ -192,6 +202,7 @@ chown -R 33:33 /var/www/html
 				{Name: "WORDPRESS_ADMIN_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: mySQLSecretName}, Key: "password"}}},
 				{Name: "WORDPRESS_ADMIN_EMAIL", Value: wp.Spec.AdminEmail},
 				{Name: "WORDPRESS_MEMORY_LIMIT", Value: memoryLimit},
+				ssoInitEnv(wp),
 			},
 		}
 
@@ -285,6 +296,10 @@ chown -R 33:33 /var/www/html
 
 		if keepWarmEnabled(wp) {
 			podSpec.Containers = append(podSpec.Containers, keepWarmContainer(wp))
+		}
+
+		if adminSSOEnabled(wp) {
+			podSpec.Containers[0].Env = append(podSpec.Containers[0].Env, ssoKeyEnv(wp))
 		}
 
 		// Create the deployment
@@ -398,6 +413,17 @@ chown -R 33:33 /var/www/html
 
 		// Ensure the Apache prefork config is mounted
 		if reconcileApacheConfigMount(deployment) {
+			updateNeeded = true
+		}
+
+		// Keep the init script current so script changes reach existing sites
+		if !slices.Equal(deployment.Spec.Template.Spec.InitContainers[0].Command, initContainerCommand()) {
+			deployment.Spec.Template.Spec.InitContainers[0].Command = initContainerCommand()
+			updateNeeded = true
+		}
+
+		// Ensure the admin SSO plugin wiring matches the spec
+		if reconcileSSOContainers(&deployment.Spec.Template.Spec, wp) {
 			updateNeeded = true
 		}
 

@@ -334,6 +334,12 @@ func (r *WordPressSiteReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, err
 	}
 
+	// Generate the admin SSO key once the site secret exists
+	if err := wordpress.ReconcileSSOKey(ctx, r.Client, wp); err != nil {
+		logger.Error(err, "Failed to reconcile admin SSO key")
+		return ctrl.Result{}, err
+	}
+
 	// Second, reconcile the ConfigMap for the WordPress site
 	if err := wordpress.ReconcileConfigMap(ctx, r.Client, r.Scheme, wp); err != nil {
 		logger.Error(err, "Failed to reconcile ConfigMap")

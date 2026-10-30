@@ -96,4 +96,33 @@ spec:
     storageSize: 10Gi
 ```
 
+### Admin SSO (one-click login)
+
+Admin SSO is disabled by default. Enabling it lets a control plane that has access to the
+site's Secret log users into wp-admin without a password:
+
+```yaml
+spec:
+  wordpress:
+    adminSSO:
+      enabled: true
+```
+
+The operator then generates a random key, stores it as `ssoKey` in the site's Secret (the one
+referenced by `adminUserSecretKeyRef`) and installs a must-use plugin
+(`wp-content/mu-plugins/kubepress-sso.php`) that is re-written on every pod start. To log a
+user in, redirect the browser to
+
+```
+https://<host>/?kubepress_sso=<base64url(payload)>.<base64url(HMAC-SHA256(payload, key))>
+```
+
+where `payload` is a JSON object with `email` (the WordPress user to log in), `exp` (unix
+timestamp, at most 5 minutes ahead) and `nonce` (random, accepted once). Optional fields:
+`login` and `name` are used when the user has to be created, `create: false` prevents
+creating a missing user (new users become administrators), `redirect` is a wp-admin
+relative path to land on. Tokens are only accepted over HTTPS. Rotate the key by removing
+`ssoKey` from the Secret; the operator generates a new one. Setting `enabled: false`
+removes the plugin on the next pod start.
+
 For more information about the fields in the WordPress Custom Resource, please look directly at the [wordpresssite_types.go](../api/v1/wordpresssite_types.go) file in the `api/v1` directory.

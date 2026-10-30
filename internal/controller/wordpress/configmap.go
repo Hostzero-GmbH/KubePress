@@ -87,6 +87,7 @@ func ReconcileConfigMap(ctx context.Context, r client.Client, scheme *runtime.Sc
 	data := map[string]string{
 		"php.ini":       phpIniContent,
 		ApacheConfigKey: apacheConfig,
+		SSOPluginKey:    SSOPluginSource(),
 	}
 
 	// Compare with existing config (if any)
