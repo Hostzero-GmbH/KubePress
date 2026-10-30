@@ -128,6 +128,21 @@ spec:
               wordpress:
                 description: WordPress configuration
                 properties:
+                  adminSSO:
+                    description: |-
+                      AdminSSO enables passwordless admin login links for this site. When
+                      enabled, the operator generates a per-site secret key (stored as
+                      `ssoKey` in the site's Secret) and installs a must-use plugin that logs
+                      in a user presented with a short-lived HMAC-signed token. A control
+                      plane that knows the key can hand users a one-click login. Disabled by
+                      default.
+                    properties:
+                      enabled:
+                        default: false
+                        description: Enabled installs the SSO must-use plugin and
+                          generates the site key
+                        type: boolean
+                    type: object
                   env:
                     description: Environment variables to pass to the WordPress container
                     items:

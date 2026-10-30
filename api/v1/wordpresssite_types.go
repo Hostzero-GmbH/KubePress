@@ -85,6 +85,23 @@ type WordPressConfig struct {
 	// +kubebuilder:default=true
 	// +optional
 	KeepWarm *bool `json:"keepWarm,omitempty"`
+
+	// AdminSSO enables passwordless admin login links for this site. When
+	// enabled, the operator generates a per-site secret key (stored as
+	// `ssoKey` in the site's Secret) and installs a must-use plugin that logs
+	// in a user presented with a short-lived HMAC-signed token. A control
+	// plane that knows the key can hand users a one-click login. Disabled by
+	// default.
+	// +optional
+	AdminSSO *AdminSSOConfig `json:"adminSSO,omitempty"`
+}
+
+// AdminSSOConfig configures token-based admin login (see AdminSSO)
+type AdminSSOConfig struct {
+	// Enabled installs the SSO must-use plugin and generates the site key
+	// +kubebuilder:default=false
+	// +optional
+	Enabled bool `json:"enabled,omitempty"`
 }
 
 // EnvVar represents an environment variable in a container
