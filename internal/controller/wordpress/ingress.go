@@ -17,6 +17,8 @@ import (
 	crmv1 "hostzero.de/m/v2/api/v1"
 )
 
+const certManagerIssuerAnnotation = "cert-manager.io/cluster-issuer"
+
 // ReconcileIngress creates or updates the Ingress for WordPress
 func ReconcileIngress(ctx context.Context, r client.Client, scheme *runtime.Scheme, wp *crmv1.WordPressSite) error {
 	logger := log.FromContext(ctx).WithValues("component", "ingress")
@@ -185,6 +187,14 @@ func updateExistingIngress(ctx context.Context, r client.Client, wp *crmv1.WordP
 		"nginx.ingress.kubernetes.io/proxy-send-timeout": "100",
 	}
 
+	tlsEnabled := wp.Spec.Ingress != nil && wp.Spec.Ingress.TLS
+
+	// cert-manager only issues a certificate while this annotation is present,
+	// so it is part of the desired state rather than a one-off set on creation
+	if tlsEnabled {
+		annotations[certManagerIssuerAnnotation] = os.Getenv("TLS_CLUSTER_ISSUER")
+	}
+
 	if wp.Spec.Ingress != nil && wp.Spec.Ingress.Annotations != nil {
 		for k, v := range wp.Spec.Ingress.Annotations {
 			annotations[k] = v
@@ -206,13 +216,14 @@ func updateExistingIngress(ctx context.Context, r client.Client, wp *crmv1.WordP
 		needsUpdate = true
 	}
 
-	// Update TLS if needed
-	tlsChanged := false
-	if wp.Spec.Ingress != nil && wp.Spec.Ingress.TLS {
-		tlsChanged = updateTLSConfig(ingress, host, secretName)
-		if tlsChanged {
+	// Add, update or remove TLS to match the spec
+	if tlsEnabled {
+		if updateTLSConfig(ingress, host, secretName) {
 			needsUpdate = true
 		}
+	} else if len(ingress.Spec.TLS) > 0 {
+		ingress.Spec.TLS = nil
+		needsUpdate = true
 	}
 
 	// Update the ingress if needed
@@ -270,7 +281,7 @@ func configureTLS(ingress *networkingv1.Ingress, host, secretName string) {
 		ingress.Annotations = make(map[string]string)
 	}
 
-	ingress.Annotations["cert-manager.io/cluster-issuer"] = os.Getenv("TLS_CLUSTER_ISSUER")
+	ingress.Annotations[certManagerIssuerAnnotation] = os.Getenv("TLS_CLUSTER_ISSUER")
 
 	ingress.Spec.TLS = []networkingv1.IngressTLS{
 		{
