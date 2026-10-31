@@ -159,3 +159,28 @@ func assertSecretRef(t *testing.T, env []corev1.EnvVar, name, secretName, key st
 	}
 	t.Fatalf("env %s not found", name)
 }
+
+func TestToCoreEnvVarsSkipsManagedEnvVars(t *testing.T) {
+	got := toCoreEnvVars([]crmv1.EnvVar{
+		{Name: "WORDPRESS_URL", Value: "https://override.example.com"},
+		{Name: "CUSTOM_SETTING", Value: "value"},
+	})
+
+	if len(got) != 1 || got[0].Name != "CUSTOM_SETTING" || got[0].Value != "value" {
+		t.Fatalf("expected only CUSTOM_SETTING, got %#v", got)
+	}
+}
+
+func TestGetSFTPServiceTypeDefaultsToLoadBalancer(t *testing.T) {
+	for value, want := range map[string]corev1.ServiceType{
+		"":             corev1.ServiceTypeLoadBalancer,
+		"LoadBalancer": corev1.ServiceTypeLoadBalancer,
+		"ClusterIP":    corev1.ServiceTypeClusterIP,
+		"NodePort":     corev1.ServiceTypeNodePort,
+	} {
+		t.Setenv("SFTP_SERVICE_TYPE", value)
+		if got := getSFTPServiceType(); got != want {
+			t.Fatalf("SFTP_SERVICE_TYPE=%q: expected %s, got %s", value, want, got)
+		}
+	}
+}

@@ -97,3 +97,22 @@ spec:
 ```
 
 For more information about the fields in the WordPress Custom Resource, please look directly at the [wordpresssite_types.go](../api/v1/wordpresssite_types.go) file in the `api/v1` directory.
+### Custom Environment Variables
+
+You can pass additional environment variables to the WordPress container and its init container with `spec.wordpress.env`:
+
+```yaml
+spec:
+  wordpress:
+    env:
+      - name: KUBEPRESS_SYNC_WP_CONTENT
+        value: "true"
+```
+
+Variables that the operator manages itself, such as `WORDPRESS_URL`, the `WORDPRESS_DB_*` settings and the admin credentials, cannot be overridden this way and are ignored.
+
+#### Syncing wp-content from the image
+
+Setting `KUBEPRESS_SYNC_WP_CONTENT` to `"true"` makes the init container copy `themes`, `plugins` and `mu-plugins` from `/usr/src/wordpress/wp-content/` in the WordPress image into the site's content volume on every pod start. This is useful for custom images that ship their own themes or plugins.
+
+The copy overwrites files with the same path on the volume, so any changes made to those files on the site (for example through the WordPress admin or SFTP) are lost on the next restart. Files that exist only on the volume are left alone. The option is disabled by default.

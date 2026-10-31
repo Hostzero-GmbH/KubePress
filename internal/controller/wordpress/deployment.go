@@ -447,9 +447,13 @@ func imagePullSecretsEqual(actual []corev1.LocalObjectReference, expected string
 	return len(actual) == 1 && actual[0].Name == expected
 }
 
+// toCoreEnvVars converts custom environment variables, skipping the ones the operator manages.
 func toCoreEnvVars(envVars []crmv1.EnvVar) []corev1.EnvVar {
 	coreEnvVars := make([]corev1.EnvVar, 0, len(envVars))
 	for _, env := range envVars {
+		if isManagedEnvVar(env.Name) {
+			continue
+		}
 		coreEnvVars = append(coreEnvVars, corev1.EnvVar{
 			Name:  env.Name,
 			Value: env.Value,

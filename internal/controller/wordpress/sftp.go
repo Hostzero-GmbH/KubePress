@@ -281,12 +281,12 @@ func getEnv(name string, fallback string) string {
 
 func getSFTPServiceType() corev1.ServiceType {
 	switch os.Getenv("SFTP_SERVICE_TYPE") {
-	case string(corev1.ServiceTypeLoadBalancer):
-		return corev1.ServiceTypeLoadBalancer
+	case string(corev1.ServiceTypeClusterIP):
+		return corev1.ServiceTypeClusterIP
 	case string(corev1.ServiceTypeNodePort):
 		return corev1.ServiceTypeNodePort
 	default:
-		return corev1.ServiceTypeClusterIP
+		return corev1.ServiceTypeLoadBalancer
 	}
 }
 
