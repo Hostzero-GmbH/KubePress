@@ -36,11 +36,7 @@ func ReconcilePVC(ctx context.Context, r client.Client, scheme *runtime.Scheme, 
 			"app.kubernetes.io/part-of":    "kubepress",
 		}
 
-		// Determine storage size, default to 10Gi for central storage
-		storageSize := "10Gi"
-		if wp.Spec.WordPress.StorageSize != "" {
-			storageSize = wp.Spec.WordPress.StorageSize
-		}
+		storageSize := desiredStorageSize(wp)
 
 		// Always use ReadWriteMany for central storage
 		accessMode := corev1.ReadWriteMany
@@ -90,15 +86,41 @@ func ReconcilePVC(ctx context.Context, r client.Client, scheme *runtime.Scheme, 
 		return err
 	} else {
 		// updating existing PVC
-		quantity := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
-		if quantity != resource.MustParse(wp.Spec.WordPress.StorageSize) {
-			quantity = resource.MustParse(wp.Spec.WordPress.StorageSize)
-			if err := r.Update(ctx, pvc); err != nil {
-				logger.Error(err, "Failed to update PVC storage size")
-				return err
-			}
+		desired, err := resource.ParseQuantity(desiredStorageSize(wp))
+		if err != nil {
+			logger.Error(err, "Invalid storage size", "storageSize", wp.Spec.WordPress.StorageSize)
+			return err
+		}
+
+		current := pvc.Spec.Resources.Requests[corev1.ResourceStorage]
+		switch desired.Cmp(current) {
+		case 0:
+			return nil
+		case -1:
+			// Kubernetes rejects shrinking a PVC, so don't retry it forever
+			logger.Info("Ignoring storage size smaller than the existing PVC",
+				"current", current.String(), "desired", desired.String())
+			return nil
+		}
+
+		if pvc.Spec.Resources.Requests == nil {
+			pvc.Spec.Resources.Requests = corev1.ResourceList{}
+		}
+		pvc.Spec.Resources.Requests[corev1.ResourceStorage] = desired
+		logger.Info("Expanding PVC", "from", current.String(), "to", desired.String())
+		if err := r.Update(ctx, pvc); err != nil {
+			logger.Error(err, "Failed to update PVC storage size")
+			return err
 		}
 	}
 
 	return nil
+}
+
+// desiredStorageSize returns the requested storage size, default to 10Gi for central storage
+func desiredStorageSize(wp *crmv1.WordPressSite) string {
+	if wp.Spec.WordPress.StorageSize != "" {
+		return wp.Spec.WordPress.StorageSize
+	}
+	return "10Gi"
 }
