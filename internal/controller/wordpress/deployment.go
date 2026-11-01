@@ -82,9 +82,31 @@ if ! /tmp/wp-cli core is-installed --path="/var/www/html/" --quiet 2>/dev/null; 
 		--allow-root
 fi
 
+` + siteURLInitScript + `
 ` + ssoInitScript + `
 # Set proper ownership and permissions
 chown -R 33:33 /var/www/html
+`
+
+// siteURLInitScript is appended to the init container script. WordPress only
+// takes the URL at install time, so when TLS is switched on later the site
+// would keep linking to http://. The operator owns the site URL: whenever the
+// stored URL differs from WORDPRESS_URL it is rewritten, including links in
+// posts.
+const siteURLInitScript = `
+# Follow the site URL managed by the operator
+current_url="$(/tmp/wp-cli option get home --path="/var/www/html/" --allow-root 2>/dev/null || true)"
+current_url="${current_url%/}"
+if [ -n "$WORDPRESS_URL" ] && [ -n "$current_url" ] && [ "$current_url" != "$WORDPRESS_URL" ]; then
+	echo "Switching site URL from $current_url to $WORDPRESS_URL..."
+	if ! /tmp/wp-cli search-replace "$current_url" "$WORDPRESS_URL" --skip-columns=guid \
+		--report-changed-only --path="/var/www/html/" --allow-root; then
+		# never block the pod start: at least switch the URLs WordPress uses
+		echo "WARNING: search-replace failed, only updating home and siteurl"
+		/tmp/wp-cli option update home "$WORDPRESS_URL" --path="/var/www/html/" --allow-root || true
+		/tmp/wp-cli option update siteurl "$WORDPRESS_URL" --path="/var/www/html/" --allow-root || true
+	fi
+fi
 `
 
 // initContainerCommand is the init container entrypoint; kept in one place so
@@ -196,7 +218,7 @@ func ReconcileDeployment(ctx context.Context, r client.Client, scheme *runtime.S
 				{Name: "WORDPRESS_DB_NAME", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: mySQLSecretName}, Key: "database"}}},
 				{Name: "WORDPRESS_DB_USER", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: mySQLSecretName}, Key: "databaseUsername"}}},
 				{Name: "WORDPRESS_DB_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: mySQLSecretName}, Key: "databasePassword"}}},
-				{Name: "WORDPRESS_URL", Value: getSiteUrl(wp)},
+				siteURLEnv(wp),
 				{Name: "WORDPRESS_TITLE", Value: wp.Spec.SiteTitle},
 				{Name: "WORDPRESS_ADMIN_USER", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: mySQLSecretName}, Key: "username"}}},
 				{Name: "WORDPRESS_ADMIN_PASSWORD", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{LocalObjectReference: corev1.LocalObjectReference{Name: mySQLSecretName}, Key: "password"}}},
@@ -422,6 +444,11 @@ func ReconcileDeployment(ctx context.Context, r client.Client, scheme *runtime.S
 			updateNeeded = true
 		}
 
+		// Keep the site URL current, so switching TLS on rewrites http:// links
+		if setEnvVar(&deployment.Spec.Template.Spec.InitContainers[0].Env, siteURLEnv(wp)) {
+			updateNeeded = true
+		}
+
 		// Ensure the admin SSO plugin wiring matches the spec
 		if reconcileSSOContainers(&deployment.Spec.Template.Spec, wp) {
 			updateNeeded = true
@@ -587,6 +614,11 @@ func reconcileApacheConfigMount(deployment *appsv1.Deployment) bool {
 	}
 	container.VolumeMounts = append(container.VolumeMounts, apacheConfigVolumeMount())
 	return true
+}
+
+// siteURLEnv is the URL WordPress should use, following spec.ingress.tls
+func siteURLEnv(wp *crmv1.WordPressSite) corev1.EnvVar {
+	return corev1.EnvVar{Name: "WORDPRESS_URL", Value: getSiteUrl(wp)}
 }
 
 // Helper functions to get values from the WordPress spec
